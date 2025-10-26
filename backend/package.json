@@ -17,14 +17,6 @@
   "devDependencies": {
     "nodemon": "^3.1.4"
   },
-  "keywords": [
-    "upi",
-    "uropay",
-    "payment",
-    "express",
-    "razorpay-alternative"
-  ],
   "author": "Anuj",
   "license": "MIT"
 }
-
