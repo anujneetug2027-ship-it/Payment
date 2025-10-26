@@ -38,7 +38,8 @@
       payBtn.textContent = 'Preparing...';
 
       try {
-        const res = await fetch('https://payment-07mb.onrender.com/create-payment', {
+        // call backend (change URL if deployed on Render)
+        const res = await fetch('/create-payment', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ amount })
@@ -46,12 +47,10 @@
         const data = await res.json();
         if (!res.ok) throw new Error(data.message || 'Failed to create payment');
 
-        // Expecting { payment_url: 'https://...'} from the backend
         if (data.payment_url) {
-          // redirect user to payment page
           window.location.href = data.payment_url;
         } else {
-          throw new Error('Payment URL not returned by server');
+          throw new Error('Payment URL not returned');
         }
       } catch (err) {
         msg.textContent = err.message;
@@ -62,6 +61,4 @@
     });
   </script>
 </body>
-  </html>
-
-
+    </html>
