@@ -39,7 +39,7 @@
 
       try {
         // call backend (change URL if deployed on Render)
-        const res = await fetch('/create-payment', {
+        const res = await fetch('https://payment-07mb.onrender.com/create-payment', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ amount })
@@ -62,3 +62,4 @@
   </script>
 </body>
     </html>
+
