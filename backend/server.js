@@ -10,7 +10,7 @@ app.use(cors());
 app.use(bodyParser.json());
 app.use(express.static("public"));
 
-const UROPAY_API_URL = process.env.UROPAY_API_URL;
+const UROPAY_API_URL = process.env.UROPAY_API_URL || "https://api.uropay.me/order/generate";
 const UROPAY_API_KEY = process.env.UROPAY_API_KEY;
 const UROPAY_SECRET = process.env.UROPAY_SECRET;
 
@@ -26,16 +26,15 @@ app.post("/create-payment", async (req, res) => {
       return res.status(400).json({ message: "Amount must be between ₹1–10,000" });
     }
 
-    // Generate SHA512 hash from secret
-    const sha512 = crypto.createHash("sha512").update(UROPAY_SECRET).digest("hex");
+    // ✅ Step 1: Hash the secret using SHA512
+    const hashedSecret = crypto.createHash("sha512").update(UROPAY_SECRET).digest("hex");
 
-    // Example merchant order ID
+    // ✅ Step 2: Build payload
     const orderId = "ORDER" + Date.now();
-
     const payload = {
-      vpa: vpa || "abc@icici", // fallback for testing
+      vpa: vpa || "abc@icici",
       vpaName: vpaName || "Anuj User",
-      amount: amount * 100, // in paise if required
+      amount: Number(amount), // Do NOT multiply by 100 — docs use ₹ directly
       merchantOrderId: orderId,
       transactionNote: `For ${orderId}`,
       customerName: "Anuj Chauhan",
@@ -43,29 +42,43 @@ app.post("/create-payment", async (req, res) => {
       notes: { key1: "value1", key2: "value2" },
     };
 
+    // ✅ Step 3: Call UroPay API
     const response = await fetch(UROPAY_API_URL, {
       method: "POST",
       headers: {
         "Accept": "application/json",
         "Content-Type": "application/json",
         "X-API-KEY": UROPAY_API_KEY,
-        "Authorization": `Bearer ${sha512}`,
+        "Authorization": `Bearer ${hashedSecret}`,
       },
       body: JSON.stringify(payload),
     });
 
-    const data = await response.json();
-    console.log("UroPay Response:", data);
+    const text = await response.text(); // read as text
+    console.log("UroPay Raw Response:", text);
 
-    if (!response.ok) {
-      return res.status(500).json({ message: data.message || "UroPay API error", data });
+    // ✅ Step 4: Try parsing as JSON, otherwise show HTML error
+    let data;
+    try {
+      data = JSON.parse(text);
+    } catch (e) {
+      return res.status(500).json({
+        message: "UroPay did not return valid JSON (see raw response)",
+        raw: text,
+      });
     }
 
-    // return whatever payment URL or QR they provide
-    return res.json({ data });
+    if (!response.ok) {
+      return res.status(500).json({
+        message: data.message || "UroPay API error",
+        detail: data,
+      });
+    }
+
+    res.json({ data });
   } catch (err) {
     console.error("Payment Error:", err);
-    return res.status(500).json({ message: err.message });
+    res.status(500).json({ message: err.message });
   }
 });
 
