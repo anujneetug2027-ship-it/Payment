@@ -3,63 +3,95 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Pay with UroPay</title>
+  <title>Add Money - UroPay</title>
   <style>
-    body{font-family: system-ui, Arial; display:flex; min-height:100vh; align-items:center; justify-content:center; background:#f7fafc}
-    .card{background:white;padding:24px;border-radius:12px;box-shadow:0 6px 20px rgba(0,0,0,0.08);width:320px}
-    input[type=number]{width:100%;padding:10px;margin:10px 0;border-radius:8px;border:1px solid #ddd}
-    button{width:100%;padding:10px;border-radius:8px;border:none;background:#2563eb;color:white;font-weight:600}
-    .error{color:#b91c1c;margin-top:8px}
+    body {
+      font-family: system-ui, Arial;
+      display: flex;
+      height: 100vh;
+      align-items: center;
+      justify-content: center;
+      background: #f7fafc;
+    }
+    .card {
+      background: white;
+      padding: 24px;
+      border-radius: 12px;
+      box-shadow: 0 6px 20px rgba(0,0,0,0.1);
+      width: 320px;
+    }
+    input {
+      width: 100%;
+      padding: 10px;
+      margin: 8px 0;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+    }
+    button {
+      width: 100%;
+      padding: 10px;
+      border: none;
+      background: #2563eb;
+      color: white;
+      font-weight: bold;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+    .error { color: #b91c1c; margin-top: 8px; }
   </style>
 </head>
 <body>
   <div class="card">
-    <h2>Pay with UPI (UroPay)</h2>
-    <label for="amount">Enter amount (₹1 - ₹10,000)</label>
-    <input id="amount" type="number" min="1" max="10000" value="100" />
-    <button id="payBtn">Pay Now</button>
-    <div id="msg" class="error"></div>
+    <h2>Add Money via UPI (UroPay)</h2>
+    <label>Amount (₹1 - ₹10,000)</label>
+    <input id="amount" type="number" min="1" max="10000" placeholder="Enter amount" />
+    <label>UPI ID</label>
+    <input id="vpa" type="text" placeholder="e.g. anuj@upi" />
+    <label>Name</label>
+    <input id="vpaName" type="text" placeholder="Your UPI name" />
+    <button id="payBtn">Generate Payment Link</button>
+    <p id="msg" class="error"></p>
   </div>
 
   <script>
-    const payBtn = document.getElementById('payBtn');
-    const amountEl = document.getElementById('amount');
-    const msg = document.getElementById('msg');
+    const btn = document.getElementById("payBtn");
+    const msg = document.getElementById("msg");
 
-    payBtn.addEventListener('click', async () => {
-      msg.textContent = '';
-      const amount = Number(amountEl.value);
-      if (!Number.isFinite(amount) || amount < 1 || amount > 10000) {
-        msg.textContent = 'Amount must be between ₹1 and ₹10,000';
+    btn.addEventListener("click", async () => {
+      msg.textContent = "";
+      const amount = Number(document.getElementById("amount").value);
+      const vpa = document.getElementById("vpa").value;
+      const vpaName = document.getElementById("vpaName").value;
+
+      if (!amount || amount < 1 || amount > 10000) {
+        msg.textContent = "Amount must be between ₹1 and ₹10,000";
         return;
       }
 
-      payBtn.disabled = true;
-      payBtn.textContent = 'Preparing...';
+      btn.disabled = true;
+      btn.textContent = "Processing...";
 
       try {
-        // call backend (change URL if deployed on Render)
-        const res = await fetch('https://payment-07mb.onrender.com/create-payment', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ amount })
+        const res = await fetch("/create-payment", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ amount, vpa, vpaName }),
         });
         const data = await res.json();
-        if (!res.ok) throw new Error(data.message || 'Failed to create payment');
+        console.log(data);
 
-        if (data.payment_url) {
-          window.location.href = data.payment_url;
+        if (data?.data?.payment_url) {
+          window.location.href = data.data.payment_url;
         } else {
-          throw new Error('Payment URL not returned');
+          msg.textContent = "Payment created, but no URL returned.";
         }
       } catch (err) {
-        msg.textContent = err.message;
+        msg.textContent = "Error: " + err.message;
       } finally {
-        payBtn.disabled = false;
-        payBtn.textContent = 'Pay Now';
+        btn.disabled = false;
+        btn.textContent = "Generate Payment Link";
       }
     });
   </script>
 </body>
-    </html>
-
+  </html>
