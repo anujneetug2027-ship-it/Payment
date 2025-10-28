@@ -13,7 +13,7 @@ const UPI_GATEWAY_API_URL = process.env.UPI_GATEWAY_API_URL;
 const UPI_GATEWAY_API_KEY = process.env.UPI_GATEWAY_API_KEY;
 
 // 🟩 Route to create payment order
-app.post("/create-payment", async (req, res) => {
+app.post("https://payment-07mb.onrender.com/create-payment", async (req, res) => {
   try {
     const { amount, vpa, vpaName } = req.body;
 
@@ -68,3 +68,4 @@ app.post("/webhook/payment", (req, res) => {
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`✅ Server running on port ${PORT}`));
+
