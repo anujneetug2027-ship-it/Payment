@@ -1,5 +1,5 @@
 {
-  "name": "upi-gateway-payment",
+  "name": "upi-wallet-system",
   "version": "1.0.0",
   "main": "server.js",
   "scripts": {
