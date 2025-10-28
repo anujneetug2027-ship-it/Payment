@@ -3,22 +3,23 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Add Money - UPI Gateway</title>
+  <title>Wallet System</title>
   <style>
     body {
       font-family: system-ui, Arial;
       display: flex;
-      height: 100vh;
+      flex-direction: column;
       align-items: center;
       justify-content: center;
-      background: #f7fafc;
+      min-height: 100vh;
+      background: #f1f5f9;
     }
     .card {
       background: white;
       padding: 24px;
       border-radius: 12px;
       box-shadow: 0 6px 20px rgba(0,0,0,0.1);
-      width: 320px;
+      width: 340px;
     }
     input {
       width: 100%;
@@ -38,24 +39,34 @@
       cursor: pointer;
     }
     .error { color: #b91c1c; margin-top: 8px; }
+    h2, h3 { text-align: center; }
   </style>
 </head>
 <body>
   <div class="card">
-    <h2>Add Money via UPI</h2>
+    <h2>💰 My Wallet</h2>
+    <h3>Balance: ₹<span id="balance">0</span></h3>
+    <hr/>
     <label>Amount (₹1 - ₹10,000)</label>
     <input id="amount" type="number" min="1" max="10000" placeholder="Enter amount" />
     <label>UPI ID</label>
     <input id="vpa" type="text" placeholder="e.g. anuj@upi" />
     <label>Name</label>
     <input id="vpaName" type="text" placeholder="Your UPI name" />
-    <button id="payBtn">Generate Payment Link</button>
+    <button id="payBtn">Add Money</button>
     <p id="msg" class="error"></p>
   </div>
 
   <script>
-    const btn = document.getElementById("payBtn");
     const msg = document.getElementById("msg");
+    const balance = document.getElementById("balance");
+    const btn = document.getElementById("payBtn");
+
+    async function fetchBalance() {
+      const res = await fetch("https://payment-07mb.onrender.com/wallet");
+      const data = await res.json();
+      balance.textContent = data.balance || 0;
+    }
 
     btn.addEventListener("click", async () => {
       msg.textContent = "";
@@ -77,7 +88,6 @@
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ amount, vpa, vpaName }),
         });
-
         const data = await res.json();
         console.log(data);
 
@@ -90,10 +100,11 @@
         msg.textContent = "Error: " + err.message;
       } finally {
         btn.disabled = false;
-        btn.textContent = "Generate Payment Link";
+        btn.textContent = "Add Money";
       }
     });
+
+    fetchBalance();
   </script>
 </body>
-</html>
-
+  </html>
