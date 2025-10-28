@@ -2,6 +2,7 @@ const express = require("express");
 const fetch = require("node-fetch");
 const bodyParser = require("body-parser");
 const cors = require("cors");
+const fs = require("fs");
 require("dotenv").config();
 
 const app = express();
@@ -12,7 +13,20 @@ app.use(express.static("public"));
 const UPI_GATEWAY_API_URL = process.env.UPI_GATEWAY_API_URL;
 const UPI_GATEWAY_API_KEY = process.env.UPI_GATEWAY_API_KEY;
 
-// ✅ Route to create payment order
+// Simple wallet JSON file (database substitute)
+const WALLET_FILE = "./wallet.json";
+
+// ✅ Helper to read and write wallet
+function getWallet() {
+  if (!fs.existsSync(WALLET_FILE)) return { balance: 0 };
+  return JSON.parse(fs.readFileSync(WALLET_FILE));
+}
+
+function saveWallet(wallet) {
+  fs.writeFileSync(WALLET_FILE, JSON.stringify(wallet, null, 2));
+}
+
+// 🟩 Route: create payment order
 app.post("/create-payment", async (req, res) => {
   try {
     const { amount, vpa, vpaName } = req.body;
@@ -27,10 +41,10 @@ app.post("/create-payment", async (req, res) => {
     const payload = {
       key: UPI_GATEWAY_API_KEY,
       client_txn_id: orderId,
-      amount: String(amount), // ensure it's sent as string
+      amount: String(amount),
       p_info: "Wallet Topup",
-      customer_name: vpaName || "Anuj User",
-      customer_email: "anuj@example.com",
+      customer_name: vpaName || "User",
+      customer_email: "user@example.com",
       customer_mobile: "9999999999",
       redirect_url: "https://yourfrontend.vercel.app/success",
       udf1: vpa || "",
@@ -44,33 +58,56 @@ app.post("/create-payment", async (req, res) => {
       body: JSON.stringify(payload),
     });
 
-    const data = await response.text();
-    console.log("🔍 Raw UPI Gateway Response:", data);
+    const dataText = await response.text();
+    console.log("🔍 Raw UPI Gateway Response:", dataText);
 
-    // Try parsing safely
-    let parsed;
+    let data;
     try {
-      parsed = JSON.parse(data);
-    } catch (err) {
-      return res.status(500).json({ message: "Invalid JSON from UPI Gateway", raw: data });
+      data = JSON.parse(dataText);
+    } catch {
+      return res.status(500).json({ message: "Invalid JSON from UPI Gateway", raw: dataText });
     }
 
-    if (parsed.status === true && parsed.data && parsed.data.payment_url) {
-      return res.json({ payment_url: parsed.data.payment_url });
+    if (data.status === true && data.data?.payment_url) {
+      // Save pending transaction to wallet for verification later
+      const wallet = getWallet();
+      wallet.pending = wallet.pending || {};
+      wallet.pending[orderId] = { amount, status: "pending" };
+      saveWallet(wallet);
+
+      return res.json({ payment_url: data.data.payment_url });
     } else {
-      return res.status(500).json({ message: parsed.msg || "UPI Gateway Error", parsed });
+      return res.status(500).json({ message: data.msg || "UPI Gateway Error", data });
     }
-
   } catch (err) {
     console.error("💥 Payment Error:", err);
     res.status(500).json({ message: err.message });
   }
 });
 
-// 🟦 Webhook to receive payment status updates
+// 🟦 Webhook: UPI Gateway confirms payment
 app.post("/webhook/payment", (req, res) => {
-  console.log("📦 Webhook Data Received:", req.body);
+  console.log("📦 Webhook Data:", req.body);
+
+  const { client_txn_id, amount, status } = req.body;
+  if (status?.toLowerCase() === "success") {
+    const wallet = getWallet();
+
+    if (wallet.pending && wallet.pending[client_txn_id]) {
+      const addedAmount = Number(wallet.pending[client_txn_id].amount);
+      wallet.balance = (wallet.balance || 0) + addedAmount;
+      delete wallet.pending[client_txn_id];
+      saveWallet(wallet);
+      console.log(`✅ ₹${addedAmount} added to wallet.`);
+    }
+  }
   res.status(200).json({ received: true });
+});
+
+// 🟨 Get wallet balance
+app.get("/wallet", (req, res) => {
+  const wallet = getWallet();
+  res.json(wallet);
 });
 
 const PORT = process.env.PORT || 3000;
